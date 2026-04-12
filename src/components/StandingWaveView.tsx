@@ -63,7 +63,7 @@ export function StandingWaveView({
         errorMessage={copy.canvasUnsupported}
       />
 
-      <div className="info-grid">
+      <div className="info-grid info-grid--2col">
         <article className="info-card">
           <span>{copy.boundary}</span>
           <strong>{getBoundaryLabel(state.summary.boundary, copy)}</strong>
@@ -76,6 +76,10 @@ export function StandingWaveView({
           <span>{copy.waveSpeed}</span>
           <strong>{formatNumberWithUnit(state.summary.waveSpeed, locale, 'm/s', 2)}</strong>
         </article>
+        <article className="info-card">
+          <span>{copy.standingWavelength}</span>
+          <strong>{formatNumberWithUnit(state.summary.wavelength, locale, 'm', 2)}</strong>
+        </article>
         <article className="info-card info-card--wide">
           <span>{copy.nodeList}</span>
           <strong>{formatPositionList(state.summary.nodePositions, locale)}</strong>
@@ -83,10 +87,6 @@ export function StandingWaveView({
         <article className="info-card info-card--wide">
           <span>{copy.antinodeList}</span>
           <strong>{formatPositionList(state.summary.antinodePositions, locale)}</strong>
-        </article>
-        <article className="info-card">
-          <span>{copy.standingWavelength}</span>
-          <strong>{formatNumberWithUnit(state.summary.wavelength, locale, 'm', 2)}</strong>
         </article>
       </div>
     </>

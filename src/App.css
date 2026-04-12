@@ -48,11 +48,10 @@
 
 .hero h1 {
   margin: 0;
-  max-width: 12ch;
   font-family: var(--font-heading);
   font-size: clamp(2.2rem, 3vw, 4.1rem);
-  line-height: 0.98;
-  letter-spacing: -0.05em;
+  line-height: 1.1;
+  letter-spacing: 0;
   color: var(--text-strong);
 }
 
@@ -473,6 +472,10 @@
   grid-column: span 2;
 }
 
+.info-grid--2col {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .signal-chart {
   margin-top: 14px;
   padding: 16px;
@@ -499,12 +502,12 @@
 }
 
 .signal-chart__axis {
-  stroke: rgba(255, 255, 255, 0.5);
+  stroke: var(--chart-axis);
   stroke-width: 0.8;
 }
 
 .signal-chart__grid {
-  stroke: rgba(255, 255, 255, 0.16);
+  stroke: var(--chart-grid);
   stroke-width: 0.6;
 }
 
