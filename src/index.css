@@ -1,0 +1,99 @@
+:root {
+  font-family:
+    'Avenir Next',
+    'Hiragino Sans',
+    'Noto Sans JP',
+    'Segoe UI',
+    sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color-scheme: light;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  --font-heading:
+    'Avenir Next Condensed',
+    'Arial Narrow',
+    'Hiragino Sans',
+    sans-serif;
+  --bg:
+    radial-gradient(circle at 15% 18%, rgba(255, 203, 116, 0.34), transparent 26%),
+    radial-gradient(circle at 82% 16%, rgba(77, 182, 172, 0.22), transparent 28%),
+    linear-gradient(180deg, #f7f1e6 0%, #e8edf6 100%);
+  --text-strong: #102034;
+  --text-muted: #5e6f84;
+  --panel-bg: rgba(255, 255, 255, 0.76);
+  --panel-border: rgba(52, 73, 99, 0.12);
+  --subtle-surface: rgba(255, 255, 255, 0.58);
+  --chip-bg: rgba(255, 255, 255, 0.7);
+  --chip-border: rgba(55, 77, 102, 0.12);
+  --accent-strong: #0f8f8b;
+  --button-bg: rgba(255, 255, 255, 0.76);
+  --button-border: rgba(56, 82, 111, 0.18);
+  --panel-shadow:
+    0 22px 50px rgba(18, 35, 58, 0.12),
+    0 8px 20px rgba(18, 35, 58, 0.08);
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg:
+    radial-gradient(circle at 14% 18%, rgba(236, 153, 75, 0.2), transparent 24%),
+    radial-gradient(circle at 82% 12%, rgba(31, 182, 197, 0.18), transparent 24%),
+    linear-gradient(180deg, #07111f 0%, #0d1729 100%);
+  --text-strong: #edf3ff;
+  --text-muted: #98abc6;
+  --panel-bg: rgba(10, 20, 35, 0.8);
+  --panel-border: rgba(142, 165, 196, 0.14);
+  --subtle-surface: rgba(13, 24, 41, 0.76);
+  --chip-bg: rgba(18, 32, 53, 0.76);
+  --chip-border: rgba(133, 162, 194, 0.14);
+  --accent-strong: #48d1c9;
+  --button-bg: rgba(17, 31, 50, 0.9);
+  --button-border: rgba(152, 178, 206, 0.18);
+  --panel-shadow:
+    0 22px 50px rgba(0, 0, 0, 0.38),
+    0 8px 20px rgba(0, 0, 0, 0.24);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text-strong);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+input[type='range'] {
+  accent-color: var(--accent-strong);
+}
+
+a {
+  color: inherit;
+}
