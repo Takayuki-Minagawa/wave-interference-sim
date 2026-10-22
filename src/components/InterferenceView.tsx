@@ -1,105 +1,155 @@
-import { SignalChart } from './SignalChart'
-import { InterferenceCanvas } from './InterferenceCanvas'
+import { useRef } from 'react'
+
 import type { UiCopy } from '../data/translations'
-import { formatNumber, formatNumberWithUnit } from '../lib/format'
-import type { Locale } from '../types'
 import type { InterferenceStateModel } from '../hooks/useInterferenceState'
+import { formatNumber } from '../lib/format'
+import { getClassLabel } from '../lib/labels'
+import { getColorMapGradient } from '../lib/waveMath'
+import type { InterferenceClass, Locale } from '../types'
+import { Icon } from './Icon'
+import { InterferenceCanvas } from './InterferenceCanvas'
+import { SignalChart } from './SignalChart'
+import { Stage } from './Stage'
+import { Segmented } from './ui'
 
 interface InterferenceViewProps {
   copy: UiCopy
   locale: Locale
-  time: number
   state: InterferenceStateModel
+  onSaved: () => void
 }
 
-const getClassLabel = (
-  classification: InterferenceStateModel['summary']['classification'],
-  copy: UiCopy,
-) => {
-  switch (classification) {
-    case 'constructive':
-      return copy.constructive
-    case 'destructive':
-      return copy.destructive
-    case 'mixed':
-      return copy.mixed
-    default:
-      return copy.unavailable
-  }
+const CHART_ACCENT: Record<InterferenceClass, string> = {
+  constructive: '#f5b400',
+  destructive: '#ef4f9b',
+  mixed: '#3b9fe0',
+  unavailable: '#3b9fe0',
 }
 
-export function InterferenceView({
-  copy,
-  locale,
-  time,
-  state,
-}: InterferenceViewProps) {
+export function InterferenceView({ copy, locale, state, onSaved }: InterferenceViewProps) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const { settings, summary } = state
+  const classLabel = getClassLabel(summary.classification, copy)
+  const isIntensity = settings.viewMode === 'intensity'
+  const lambda = summary.representativeWavelength
+  const hasPhaseShift = summary.phaseDifference !== null && Math.abs(summary.phaseDifference) > 0.01
+
   return (
     <>
-      <div className="metric-grid">
-        <article className="metric-card">
-          <span>{copy.metricSources}</span>
-          <strong>{state.summary.sourceCount}</strong>
-        </article>
-        <article className="metric-card">
-          <span>{copy.metricPattern}</span>
-          <strong>
-            {state.summary.stablePattern ? copy.stablePattern : copy.driftingPattern}
-          </strong>
-        </article>
-        <article className="metric-card">
-          <span>{copy.classification}</span>
-          <strong>{getClassLabel(state.summary.classification, copy)}</strong>
-        </article>
-      </div>
+      <Stage
+        copy={copy}
+        locale={locale}
+        title={copy.modeInterferenceLong}
+        hint={copy.stageHintInterference}
+        canvasRef={canvasRef}
+        fileName="wave-lab-interference"
+        onSaved={onSaved}
+        footer={
+          <>
+            <div className="legend" aria-hidden="true">
+              <span>{isIntensity ? copy.legendQuiet : copy.legendTrough}</span>
+              <span
+                className="legend__bar"
+                style={{ background: getColorMapGradient(settings.colorMap) }}
+              />
+              <span>{isIntensity ? copy.legendLoud : copy.legendCrest}</span>
+            </div>
+            <Segmented
+              label={copy.viewMode}
+              size="sm"
+              className="segmented--on-dark"
+              value={settings.viewMode}
+              onChange={(viewMode) => state.setSettings((previous) => ({ ...previous, viewMode }))}
+              options={[
+                { value: 'wave', label: copy.viewWave },
+                { value: 'intensity', label: copy.viewIntensity },
+              ]}
+            />
+          </>
+        }
+      >
+        <InterferenceCanvas
+          settings={settings}
+          classification={summary.classification}
+          classificationLabel={classLabel}
+          setSources={state.setSources}
+          onProbePointChange={state.setProbePoint}
+          selectedSourceId={state.selectedSourceId}
+          onSelectedSourceChange={state.setSelectedSourceId}
+          onMoveSelectedSource={state.moveSelectedSource}
+          ariaLabel={copy.interferenceCanvasAria}
+          errorMessage={copy.canvasUnsupported}
+          canvasRef={canvasRef}
+        />
+      </Stage>
 
-      <InterferenceCanvas
-        sources={state.settings.sources}
-        time={time}
-        colorMap={state.settings.colorMap}
-        resolution={state.settings.resolution}
-        showConstructive={state.settings.showConstructive}
-        showDestructive={state.settings.showDestructive}
-        showWavefronts={state.settings.showWavefronts}
-        probePoint={state.settings.probePoint}
-        setSources={state.setSources}
-        onProbePointChange={state.setProbePoint}
-        selectedSourceId={state.selectedSourceId}
-        onSelectedSourceChange={state.setSelectedSourceId}
-        onMoveSelectedSource={state.moveSelectedSource}
-        ariaLabel={copy.interferenceCanvasAria}
-        errorMessage={copy.canvasUnsupported}
-      />
+      <section className="readout card" aria-live="polite">
+        <header className="readout__head">
+          <h2>
+            <Icon name="target" size={18} />
+            {copy.probeTitle}
+          </h2>
+          {settings.probePoint ? (
+            <button type="button" className="text-button" onClick={() => state.setProbePoint(null)}>
+              {copy.clearProbe}
+            </button>
+          ) : null}
+        </header>
 
-      <div className="info-grid">
-        <article className="info-card">
-          <span>{copy.probePoint}</span>
-          <strong>
-            {state.settings.probePoint
-              ? `(${formatNumber(state.settings.probePoint.x, locale, 1)}, ${formatNumber(state.settings.probePoint.y, locale, 1)})`
-              : copy.noProbePoint}
-          </strong>
-        </article>
-        <article className="info-card">
-          <span>{copy.pathDifference}</span>
-          <strong>
-            {state.summary.pathDifference !== null
-              ? formatNumberWithUnit(state.summary.pathDifference, locale, '', 2)
-              : copy.unavailable}
-          </strong>
-        </article>
-        <article className="info-card">
-          <span>{copy.speedLabel}</span>
-          <strong>{formatNumber(state.summary.averageSpeed, locale, 2)}</strong>
-        </article>
-      </div>
-
-      <SignalChart
-        title={copy.chartTitle}
-        emptyLabel={copy.chartEmpty}
-        samples={state.probeSamples}
-        accent="#ffd36b"
-      />
+        {!settings.probePoint ? (
+          <p className="readout__empty">
+            <span className="tap-ripple" aria-hidden="true" />
+            {copy.probeEmpty}
+          </p>
+        ) : (
+          <div className="readout__body">
+            <div className="readout__stats">
+              {summary.distances ? (
+                <>
+                  <div className={`verdict verdict--${summary.classification}`}>
+                    <span>{copy.classification}</span>
+                    <strong>{classLabel}</strong>
+                  </div>
+                  <div className="stat">
+                    <span>{copy.distance1}</span>
+                    <strong>{formatNumber(summary.distances[0], locale, 1)} cm</strong>
+                  </div>
+                  <div className="stat">
+                    <span>{copy.distance2}</span>
+                    <strong>{formatNumber(summary.distances[1], locale, 1)} cm</strong>
+                  </div>
+                  <div className="stat">
+                    <span>{copy.pathDifference}</span>
+                    <strong>
+                      {formatNumber(summary.pathDifference ?? 0, locale, 1)} cm
+                      {lambda ? (
+                        <small>
+                          {' '}
+                          = {formatNumber((summary.pathDifference ?? 0) / lambda, locale, 2)}λ
+                        </small>
+                      ) : null}
+                    </strong>
+                  </div>
+                  {hasPhaseShift && summary.phaseRatio !== null ? (
+                    <div className="stat">
+                      <span>{copy.phaseRatio}</span>
+                      <strong>{formatNumber(Math.abs(summary.phaseRatio), locale, 2)}</strong>
+                    </div>
+                  ) : null}
+                </>
+              ) : (
+                <p className="readout__empty">{copy.probeNeedsTwo}</p>
+              )}
+            </div>
+            <SignalChart
+              title={copy.chartTitle}
+              probePoint={settings.probePoint}
+              sources={settings.sources}
+              accent={CHART_ACCENT[summary.classification]}
+            />
+          </div>
+        )}
+      </section>
     </>
   )
 }

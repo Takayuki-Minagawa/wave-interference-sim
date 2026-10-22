@@ -2,16 +2,51 @@
 <html lang="ja">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>なみラボ｜波の干渉・定常波シミュレーター</title>
     <meta
       name="description"
-      content="波の干渉と定常波をリアルタイムに観察できる高校物理向け Web シミュレーター"
+      content="水面の波の干渉と弦の定常波を、さわって動かしながら学べる無料の物理シミュレーター。ミッションとクイズつき。"
     />
-    <title>波の干渉・定常波シミュレーター</title>
+    <meta name="theme-color" content="#f4f6fb" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="なみラボ" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="なみラボ｜波の干渉・定常波シミュレーター" />
+    <meta
+      property="og:description"
+      content="水面の波の干渉と弦の定常波を、さわって動かしながら学べる物理シミュレーター。"
+    />
+    <meta property="og:url" content="https://takayuki-minagawa.github.io/wave-interference-sim/" />
+    <meta property="og:image" content="https://takayuki-minagawa.github.io/wave-interference-sim/og-image.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <script>
+      // Apply the saved theme before first paint to avoid a light/dark flash.
+      try {
+        var saved = JSON.parse(localStorage.getItem('wave-theme') || 'null')
+        var theme =
+          saved === 'light' || saved === 'dark'
+            ? saved
+            : window.matchMedia('(prefers-color-scheme: dark)').matches
+              ? 'dark'
+              : 'light'
+        document.documentElement.dataset.theme = theme
+      } catch (error) {
+        document.documentElement.dataset.theme = 'light'
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
+    <noscript>このアプリを使うには JavaScript を有効にしてください。</noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

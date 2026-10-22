@@ -1,5 +1,9 @@
 import type { InterferencePreset, StandingWavePreset, WaveSource } from '../types'
 
+export const SOURCE_ACCENTS = ['#ff8c61', '#4cc7d9', '#a3e35c', '#ff6fae']
+
+export const MAX_SOURCES = 4
+
 const createSource = (
   id: string,
   x: number,
@@ -25,33 +29,66 @@ export const interferencePresets: InterferencePreset[] = [
   {
     id: 'young',
     title: {
-      ja: 'ヤング型の二波源',
-      en: 'Young-style twin source',
+      ja: 'ふたつの波源',
+      en: 'Twin sources',
     },
     description: {
-      ja: '同位相・同波長の2波源。経路差による干渉縞を観察しやすい基本例。',
-      en: 'Two in-phase sources with equal wavelength, ideal for observing fringe lines.',
+      ja: '同じ波を出す2つの波源。干渉縞の基本形。',
+      en: 'Two identical sources — the classic fringe pattern.',
     },
-    colorMap: 'thermal',
+    colorMap: 'ocean',
+    linkSources: true,
     sources: [
-      createSource('s1', 36, 26, '#ff8c61', 9, 0.95, 1.1, 0),
-      createSource('s2', 64, 26, '#4cc7d9', 9, 0.95, 1.1, 0),
+      createSource('s1', 38, 26, SOURCE_ACCENTS[0], 9, 0.95, 1.1, 0),
+      createSource('s2', 62, 26, SOURCE_ACCENTS[1], 9, 0.95, 1.1, 0),
     ],
   },
   {
-    id: 'phase-shift',
+    id: 'single',
     title: {
-      ja: '位相差つき二波源',
-      en: 'Phase-shifted pair',
+      ja: 'ひとつの波源',
+      en: 'Single source',
     },
     description: {
-      ja: '一方の波源に位相差を与え、強めあい線がずれる様子を確認する。',
-      en: 'Adds phase offset to one source so the constructive lines slide sideways.',
+      ja: 'まずは1つ。同心円状に広がる波を観察。',
+      en: 'Start simple: circular ripples from one point.',
+    },
+    colorMap: 'ocean',
+    linkSources: true,
+    sources: [createSource('s1', 50, 32, SOURCE_ACCENTS[0], 9, 0.95, 1.2, 0)],
+  },
+  {
+    id: 'antiphase',
+    title: {
+      ja: '逆位相の二波源',
+      en: 'Opposite phase',
+    },
+    description: {
+      ja: '片方を半周期ずらすと、中央線が弱めあいに。',
+      en: 'Shift one source by half a cycle — the centre line goes dark.',
+    },
+    colorMap: 'ocean',
+    linkSources: true,
+    sources: [
+      createSource('s1', 38, 26, SOURCE_ACCENTS[0], 9, 0.95, 1.1, 0),
+      createSource('s2', 62, 26, SOURCE_ACCENTS[1], 9, 0.95, 1.1, Math.PI),
+    ],
+  },
+  {
+    id: 'drift',
+    title: {
+      ja: '周波数がちがう',
+      en: 'Detuned pair',
+    },
+    description: {
+      ja: '周波数がわずかに違うと、縞が流れ続ける。',
+      en: 'Slightly different frequencies make the fringes sweep.',
     },
     colorMap: 'spectral',
+    linkSources: false,
     sources: [
-      createSource('s1', 34, 25, '#ff9d4d', 8.5, 1.05, 1.1, 0),
-      createSource('s2', 66, 25, '#5fb5ff', 8.5, 1.05, 1.1, Math.PI / 2),
+      createSource('s1', 38, 26, SOURCE_ACCENTS[0], 9, 0.95, 1.1, 0),
+      createSource('s2', 62, 26, SOURCE_ACCENTS[1], 8.4, 1.02, 1.1, 0),
     ],
   },
   {
@@ -61,84 +98,102 @@ export const interferencePresets: InterferencePreset[] = [
       en: 'Four-source array',
     },
     description: {
-      ja: '波源数を増やして干渉パターンが細かくなる様子を比べる。',
-      en: 'Extends the setup to four sources for a denser interference pattern.',
+      ja: '波源を増やすと、強い波がビームのように進む。',
+      en: 'More sources focus the energy into sharp beams.',
     },
     colorMap: 'thermal',
+    linkSources: true,
     sources: [
-      createSource('s1', 24, 20, '#ff9d4d', 10, 0.9, 0.9, 0),
-      createSource('s2', 44, 20, '#5fb5ff', 10, 0.9, 0.9, 0),
-      createSource('s3', 56, 20, '#8de35c', 10, 0.9, 0.9, 0),
-      createSource('s4', 76, 20, '#ff5f9c', 10, 0.9, 0.9, 0),
+      createSource('s1', 32, 14, SOURCE_ACCENTS[0], 8, 0.9, 0.9, 0),
+      createSource('s2', 44, 14, SOURCE_ACCENTS[1], 8, 0.9, 0.9, 0),
+      createSource('s3', 56, 14, SOURCE_ACCENTS[2], 8, 0.9, 0.9, 0),
+      createSource('s4', 68, 14, SOURCE_ACCENTS[3], 8, 0.9, 0.9, 0),
     ],
   },
 ]
+
+const baseStandingSettings = {
+  length: 1.2,
+  tension: 70,
+  linearDensity: 0.015,
+  amplitude: 0.34,
+  driveFrequency: 46,
+  showTraveling: true,
+  showSnapshots: true,
+  showLabels: true,
+} as const
 
 export const standingPresets: StandingWavePreset[] = [
   {
     id: 'fundamental',
     title: {
       ja: '基本振動',
-      en: 'Fundamental mode',
+      en: 'Fundamental',
     },
     description: {
-      ja: '両端固定の弦で最も低い固有振動数を観察する。',
-      en: 'The lowest resonant mode of a fixed-fixed string.',
+      ja: '両端固定の弦の、いちばん低い音。',
+      en: 'The lowest mode of a string fixed at both ends.',
     },
     settings: {
-      length: 1.2,
-      tension: 70,
-      linearDensity: 0.015,
+      ...baseStandingSettings,
       boundary: 'fixed-fixed',
-      amplitude: 0.35,
       modeIndex: 1,
-      phaseOffset: 0,
-      showSnapshots: true,
-      snapshotCount: 4,
+      driveMode: 'natural',
     },
   },
   {
-    id: 'second-harmonic',
+    id: 'third-harmonic',
     title: {
-      ja: '二倍振動',
-      en: 'Second harmonic',
+      ja: '3倍振動',
+      en: 'Third harmonic',
     },
     description: {
-      ja: '両端固定で腹が2つ現れる標準的な倍振動モード。',
-      en: 'A fixed-fixed string with two antinodes.',
+      ja: '腹が3つ。振動数は基本振動の3倍。',
+      en: 'Three loops at three times the fundamental.',
     },
     settings: {
-      length: 1.2,
-      tension: 70,
-      linearDensity: 0.015,
+      ...baseStandingSettings,
+      amplitude: 0.3,
       boundary: 'fixed-fixed',
-      amplitude: 0.32,
-      modeIndex: 2,
-      phaseOffset: 0,
-      showSnapshots: true,
-      snapshotCount: 5,
+      modeIndex: 3,
+      driveMode: 'natural',
     },
   },
   {
     id: 'closed-pipe-analogy',
     title: {
-      ja: '片側自由モード',
-      en: 'Fixed-free analogy',
+      ja: '片側が自由端',
+      en: 'One free end',
     },
     description: {
-      ja: '片端が自由な系として、閉管の基本モードに似た節と腹を観察する。',
-      en: 'A fixed-free setup analogous to the fundamental of a closed pipe.',
+      ja: '閉管と同じ形。奇数倍の振動だけが現れる。',
+      en: 'Like a closed pipe — only odd harmonics exist.',
     },
     settings: {
-      length: 1.2,
+      ...baseStandingSettings,
       tension: 55,
       linearDensity: 0.013,
       boundary: 'fixed-free',
-      amplitude: 0.34,
       modeIndex: 1,
-      phaseOffset: 0,
-      showSnapshots: true,
-      snapshotCount: 4,
+      driveMode: 'natural',
+    },
+  },
+  {
+    id: 'resonance-hunt',
+    title: {
+      ja: '共鳴さがし',
+      en: 'Resonance hunt',
+    },
+    description: {
+      ja: '弦をゆらす振動数を変えて、大きく揺れる点を探そう。',
+      en: 'Sweep the driving frequency and find where the string comes alive.',
+    },
+    settings: {
+      ...baseStandingSettings,
+      boundary: 'fixed-fixed',
+      modeIndex: 1,
+      driveMode: 'driven',
+      showTraveling: false,
     },
   },
 ]

@@ -1,13 +1,13 @@
 export type Locale = 'ja' | 'en'
 export type Theme = 'light' | 'dark'
 export type SimulationMode = 'interference' | 'standing'
-export type ColorMapId = 'thermal' | 'grayscale' | 'spectral'
+export type InspectorTab = 'controls' | 'missions' | 'learn' | 'quiz'
+export type ColorMapId = 'ocean' | 'thermal' | 'spectral' | 'grayscale'
+export type InterferenceViewMode = 'wave' | 'intensity'
+export type RenderQuality = 'high' | 'standard' | 'light'
 export type BoundaryCondition = 'fixed-fixed' | 'fixed-free' | 'free-free'
-export type InterferenceClass =
-  | 'constructive'
-  | 'destructive'
-  | 'mixed'
-  | 'unavailable'
+export type StandingDriveMode = 'natural' | 'driven'
+export type InterferenceClass = 'constructive' | 'destructive' | 'mixed' | 'unavailable'
 
 export interface LocalizedText {
   ja: string
@@ -32,7 +32,9 @@ export interface WaveSource extends Point {
 export interface InterferenceSettings {
   sources: WaveSource[]
   colorMap: ColorMapId
-  resolution: number
+  viewMode: InterferenceViewMode
+  quality: RenderQuality
+  linkSources: boolean
   showConstructive: boolean
   showDestructive: boolean
   showWavefronts: boolean
@@ -45,6 +47,7 @@ export interface InterferencePreset {
   description: LocalizedText
   sources: WaveSource[]
   colorMap: ColorMapId
+  linkSources: boolean
 }
 
 export interface StandingWaveSettings {
@@ -54,9 +57,11 @@ export interface StandingWaveSettings {
   boundary: BoundaryCondition
   amplitude: number
   modeIndex: number
-  phaseOffset: number
+  driveMode: StandingDriveMode
+  driveFrequency: number
+  showTraveling: boolean
   showSnapshots: boolean
-  snapshotCount: number
+  showLabels: boolean
 }
 
 export interface StandingWavePreset {
@@ -84,13 +89,19 @@ export interface InterferenceSummary {
   representativeWavelength: number | null
   averageSpeed: number
   stablePattern: boolean
+  sourceSeparation: number | null
+  phaseDifference: number | null
   probePoint: Point | null
+  distances: [number, number] | null
   pathDifference: number | null
+  phaseRatio: number | null
   classification: InterferenceClass
+  viewMode: InterferenceViewMode
 }
 
 export interface StandingSummary {
   boundary: BoundaryCondition
+  driveMode: StandingDriveMode
   frequency: number
   fundamentalFrequency: number
   wavelength: number
@@ -98,4 +109,9 @@ export interface StandingSummary {
   modeRatio: number
   nodePositions: number[]
   antinodePositions: number[]
+  driveFrequency: number
+  nearestResonanceRatio: number
+  nearestResonanceFrequency: number
+  resonanceLevel: number
+  slowMotionFactor: number
 }

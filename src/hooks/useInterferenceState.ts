@@ -1,136 +1,120 @@
-import {
-  startTransition,
-  useDeferredValue,
-  useMemo,
-  useState,
-} from 'react'
+import { startTransition, useMemo, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 
-import { interferencePresets } from '../data/wavePresets'
+import { MAX_SOURCES, SOURCE_ACCENTS, interferencePresets } from '../data/wavePresets'
 import {
   INTERFERENCE_WORLD,
   clamp,
-  classifyInterference,
+  classifyPhaseRatio,
   getAverageSourceSpeed,
-  getInterferenceValueAtPoint,
+  getEnabledSources,
   getPathDifference,
+  getPhaseRatio,
   getRepresentativeWavelength,
+  getSourceDistances,
   isStableInterferencePattern,
+  wrapAngle,
 } from '../lib/waveMath'
-import type { InterferenceSettings, Point, WaveSource } from '../types'
+import type { InterferenceSettings, InterferenceSummary, Point, WaveSource } from '../types'
 
-const SOURCE_ACCENTS = ['#ff8c61', '#4cc7d9', '#8de35c', '#ff5f9c']
+export type SourceField = keyof Pick<WaveSource, 'wavelength' | 'frequency' | 'amplitude' | 'phase'>
+
+/** Parameters shared by every source while "link sources" is on. */
+const LINKED_FIELDS: SourceField[] = ['wavelength', 'frequency']
 
 const cloneSource = (source: WaveSource): WaveSource => ({ ...source })
 
-const createExtraSource = (index: number): WaveSource => ({
-  id: `extra-${index + 1}`,
-  x: 22 + index * 18,
-  y: 40,
-  wavelength: 9.2,
-  frequency: 0.92,
-  amplitude: 0.85,
-  phase: 0,
-  enabled: true,
-  accent: SOURCE_ACCENTS[index % SOURCE_ACCENTS.length],
-})
+const createExtraSource = (existing: WaveSource[]): WaveSource => {
+  const usedAccents = new Set(existing.map((source) => source.accent))
+  const template = existing[0]
+  let serial = existing.length + 1
+  while (existing.some((source) => source.id === `src-${serial}`)) {
+    serial += 1
+  }
+
+  return {
+    id: `src-${serial}`,
+    x: clamp(20 + existing.length * 20, 8, INTERFERENCE_WORLD.width - 8),
+    y: 44,
+    wavelength: template?.wavelength ?? 9,
+    frequency: template?.frequency ?? 0.95,
+    amplitude: template?.amplitude ?? 1,
+    phase: 0,
+    enabled: true,
+    accent:
+      SOURCE_ACCENTS.find((accent) => !usedAccents.has(accent)) ??
+      SOURCE_ACCENTS[existing.length % SOURCE_ACCENTS.length],
+  }
+}
+
+const initialPreset = interferencePresets[0]
 
 export interface InterferenceStateModel {
-  selectedPresetId: string
+  selectedPresetId: string | null
   settings: InterferenceSettings
   setSettings: Dispatch<SetStateAction<InterferenceSettings>>
   selectedSourceId: string | null
-  setSelectedSourceId: Dispatch<SetStateAction<string | null>>
+  setSelectedSourceId: (sourceId: string | null) => void
   applyPreset: (presetId: string) => void
-  updateSource: (
-    sourceId: string,
-    field: keyof Pick<WaveSource, 'wavelength' | 'frequency' | 'amplitude' | 'phase'>,
-    value: number,
-  ) => void
+  updateSource: (sourceId: string, field: SourceField, value: number) => void
+  toggleSource: (sourceId: string) => void
   addSource: () => void
-  removeSource: () => void
-  setProbePoint: (point: Point) => void
+  removeSource: (sourceId: string) => void
+  setProbePoint: (point: Point | null) => void
   setSources: Dispatch<SetStateAction<WaveSource[]>>
   moveSelectedSource: (deltaX: number, deltaY: number) => void
-  summary: {
-    sourceCount: number
-    representativeWavelength: number | null
-    averageSpeed: number
-    stablePattern: boolean
-    probePoint: Point | null
-    pathDifference: number | null
-    classification: ReturnType<typeof classifyInterference>
-  }
-  probeSamples: number[]
+  summary: InterferenceSummary
 }
 
-export function useInterferenceState(time: number): InterferenceStateModel {
-  const [selectedPresetId, setSelectedPresetId] = useState(interferencePresets[0].id)
+export function useInterferenceState(): InterferenceStateModel {
+  const [selectedPresetId, setSelectedPresetId] = useState<string | null>(initialPreset.id)
   const [settings, setSettings] = useState<InterferenceSettings>({
-    sources: interferencePresets[0].sources.map(cloneSource),
-    colorMap: interferencePresets[0].colorMap,
-    resolution: 8,
-    showConstructive: true,
+    sources: initialPreset.sources.map(cloneSource),
+    colorMap: initialPreset.colorMap,
+    viewMode: 'wave',
+    quality: 'standard',
+    linkSources: initialPreset.linkSources,
+    showConstructive: false,
     showDestructive: false,
-    showWavefronts: true,
+    showWavefronts: false,
     probePoint: null,
   })
   const [selectedSourceId, setSelectedSourceId] = useState<string | null>(
-    interferencePresets[0].sources[0]?.id ?? null,
+    initialPreset.sources[0]?.id ?? null,
   )
 
-  const deferredTime = useDeferredValue(time)
-  const resolvedSelectedSourceId = useMemo(
-    () =>
-      settings.sources.some((source) => source.id === selectedSourceId)
-        ? selectedSourceId
-        : settings.sources[0]?.id ?? null,
-    [selectedSourceId, settings.sources],
-  )
+  const resolvedSelectedSourceId = settings.sources.some((source) => source.id === selectedSourceId)
+    ? selectedSourceId
+    : (settings.sources[0]?.id ?? null)
 
-  const representativeWavelength = useMemo(
-    () => getRepresentativeWavelength(settings.sources),
-    [settings.sources],
-  )
-  const pathDifference = useMemo(
-    () =>
-      settings.probePoint
-        ? getPathDifference(settings.probePoint, settings.sources)
-        : null,
-    [settings.probePoint, settings.sources],
-  )
-  const classification = useMemo(
-    () => classifyInterference(pathDifference, representativeWavelength),
-    [pathDifference, representativeWavelength],
-  )
+  const summary = useMemo<InterferenceSummary>(() => {
+    const enabled = getEnabledSources(settings.sources)
+    const [first, second] = enabled
+    const phaseRatio = settings.probePoint
+      ? getPhaseRatio(settings.probePoint, settings.sources)
+      : null
 
-  const summary = useMemo(
-    () => ({
-      sourceCount: settings.sources.filter((source) => source.enabled).length,
-      representativeWavelength,
+    return {
+      sourceCount: enabled.length,
+      representativeWavelength: getRepresentativeWavelength(settings.sources),
       averageSpeed: getAverageSourceSpeed(settings.sources),
       stablePattern: isStableInterferencePattern(settings.sources),
+      sourceSeparation: first && second ? Math.hypot(first.x - second.x, first.y - second.y) : null,
+      phaseDifference: first && second ? wrapAngle(second.phase - first.phase) : null,
       probePoint: settings.probePoint,
-      pathDifference,
-      classification,
-    }),
-    [classification, pathDifference, representativeWavelength, settings.probePoint, settings.sources],
-  )
-
-  const probeSamples = useMemo(() => {
-    if (!settings.probePoint) {
-      return []
+      distances: settings.probePoint
+        ? getSourceDistances(settings.probePoint, settings.sources)
+        : null,
+      pathDifference: settings.probePoint
+        ? getPathDifference(settings.probePoint, settings.sources)
+        : null,
+      phaseRatio,
+      classification: classifyPhaseRatio(phaseRatio),
+      viewMode: settings.viewMode,
     }
+  }, [settings.probePoint, settings.sources, settings.viewMode])
 
-    return Array.from({ length: 160 }, (_, index) => {
-      const sampleTime = deferredTime - (159 - index) * 0.03
-      return getInterferenceValueAtPoint(
-        settings.probePoint as Point,
-        sampleTime,
-        settings.sources,
-      )
-    })
-  }, [deferredTime, settings.probePoint, settings.sources])
+  const markCustom = () => setSelectedPresetId(null)
 
   const applyPreset = (presetId: string) => {
     const preset = interferencePresets.find((candidate) => candidate.id === presetId)
@@ -146,55 +130,62 @@ export function useInterferenceState(time: number): InterferenceStateModel {
         ...previous,
         sources: preset.sources.map(cloneSource),
         colorMap: preset.colorMap,
+        linkSources: preset.linkSources,
         probePoint: null,
       }))
     })
   }
 
-  const updateSource = (
-    sourceId: string,
-    field: keyof Pick<WaveSource, 'wavelength' | 'frequency' | 'amplitude' | 'phase'>,
-    value: number,
-  ) => {
+  const updateSource = (sourceId: string, field: SourceField, value: number) => {
+    markCustom()
+    setSettings((previous) => {
+      const applyToAll = previous.linkSources && LINKED_FIELDS.includes(field)
+      return {
+        ...previous,
+        sources: previous.sources.map((source) =>
+          applyToAll || source.id === sourceId ? { ...source, [field]: value } : source,
+        ),
+      }
+    })
+  }
+
+  const toggleSource = (sourceId: string) => {
+    markCustom()
     setSettings((previous) => ({
       ...previous,
       sources: previous.sources.map((source) =>
-        source.id === sourceId ? { ...source, [field]: value } : source,
+        source.id === sourceId ? { ...source, enabled: !source.enabled } : source,
       ),
     }))
   }
 
   const addSource = () => {
-    startTransition(() => {
-      setSettings((previous) => {
-        if (previous.sources.length >= 4) {
-          return previous
-        }
+    if (settings.sources.length >= MAX_SOURCES) {
+      return
+    }
 
-        const nextSource = createExtraSource(previous.sources.length)
-        setSelectedSourceId(nextSource.id)
-
-        return {
-          ...previous,
-          sources: [...previous.sources, nextSource],
-        }
-      })
-    })
+    const nextSource = createExtraSource(settings.sources)
+    markCustom()
+    setSelectedSourceId(nextSource.id)
+    setSettings((previous) => ({
+      ...previous,
+      sources: [...previous.sources, nextSource],
+    }))
   }
 
-  const removeSource = () => {
-    startTransition(() => {
-      setSettings((previous) => ({
-        ...previous,
-        sources:
-          previous.sources.length <= 1
-            ? previous.sources
-            : previous.sources.slice(0, -1),
-      }))
-    })
+  const removeSource = (sourceId: string) => {
+    if (settings.sources.length <= 1) {
+      return
+    }
+
+    markCustom()
+    setSettings((previous) => ({
+      ...previous,
+      sources: previous.sources.filter((source) => source.id !== sourceId),
+    }))
   }
 
-  const setProbePoint = (point: Point) => {
+  const setProbePoint = (point: Point | null) => {
     setSettings((previous) => ({
       ...previous,
       probePoint: point,
@@ -202,10 +193,10 @@ export function useInterferenceState(time: number): InterferenceStateModel {
   }
 
   const setSources: Dispatch<SetStateAction<WaveSource[]>> = (updater) => {
+    markCustom()
     setSettings((previous) => ({
       ...previous,
-      sources:
-        typeof updater === 'function' ? updater(previous.sources) : updater,
+      sources: typeof updater === 'function' ? updater(previous.sources) : updater,
     }))
   }
 
@@ -214,9 +205,8 @@ export function useInterferenceState(time: number): InterferenceStateModel {
       return
     }
 
-    setSettings((previous) => ({
-      ...previous,
-      sources: previous.sources.map((source) =>
+    setSources((previous) =>
+      previous.map((source) =>
         source.id === resolvedSelectedSourceId
           ? {
               ...source,
@@ -225,7 +215,7 @@ export function useInterferenceState(time: number): InterferenceStateModel {
             }
           : source,
       ),
-    }))
+    )
   }
 
   return {
@@ -236,12 +226,12 @@ export function useInterferenceState(time: number): InterferenceStateModel {
     setSelectedSourceId,
     applyPreset,
     updateSource,
+    toggleSource,
     addSource,
     removeSource,
     setProbePoint,
     setSources,
     moveSelectedSource,
     summary,
-    probeSamples,
   }
 }
